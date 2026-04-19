@@ -1,15 +1,26 @@
-# Carpetas de Herramientas y Claves (SECRETOS)
-.ssh/
-.gemini/
+# Herramientas e IA (PROHIBIDO)
+.gemini*
+.antigravity*
 .vscode-server/
 .antigravity-server/
+
+# Configuracion de Usuario y Sistema
+.bash*
+.profile
+.ssh/
 .npm/
 .dotnet/
 .cache/
 .local/
 .sudo_as_admin_successful
 
-# Datos de Docker (PESADOS)
+# Documentos Locales / Informes (Mantener solo en el PC)
+*Final*.md
+Memoria_Tecnica_Final_ASIR.md
+Organizacion_Proyecto_ASIR.md
+db.canarias.local.fixed
+
+# Datos Pesados de Docker
 infraestructura/db_data/
 infraestructura/wordpress_data/
 infraestructura/correo/mail-data/
@@ -20,7 +31,7 @@ infraestructura/vault_data/
 infraestructura/kuma_data/
 backups/
 
-# Otros temporales
+# Temporales
 *.save
 *.swp
 .DS_Store
