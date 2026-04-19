@@ -1,0 +1,15 @@
+# @File: infraestructura/correo/mail-config/postfix-accounts.cf
+# @Description: Base de datos de usuarios del servidor de correo corporativo.
+# @Logic: Almacena los correos y sus contraseñas en formato hash SHA512 para máxima seguridad.
+
+# @Nota_Seguridad: Las contraseñas nunca deben guardarse en texto plano.
+# El prefijo {SHA512-CRYPT} le indica al servidor (Dovecot/Postfix) el algoritmo usado.
+# Todas estas cuentas usan la contraseña "admin1234" cifrada para este entorno de laboratorio.
+
+jeremy@canarias.local|{SHA512-CRYPT}$6$lOq2Ku6ssU12QvI3$sIijWfF4gVb64HxL8L3jOUOjk8QRJk83eIJ7gLb0pF/bSRq0Oxs.VvOq1ahmvubpcOPDEzwc0JhARYztcnMSP0
+adonay@canarias.local|{SHA512-CRYPT}$6$DlkHbjh979MZdnvZ$5Egpna0z45QQkp9at5AxT3k2ByTVuCrJIWNmNX.GWWyClR56z/1mEP8FOqGX2B1iaYImTFhqob6TjBcH6Wmz4.
+ikram@canarias.local|{SHA512-CRYPT}$6$QRpeol058PgJBMqP$cHluibj/IPCaaUsa83uB.NUcnuHFZ2/38i7YJo/MY1h180k2XyGO03GFw6pCIUlwknOQIq0JAv.jt0JHYzlTo/
+patricia@canarias.local|{SHA512-CRYPT}$6$Vxb1eKYC2.acf78c$XlIJJvBu4UldpImirJGifLEFR5JeSrfAVdXzqP4lJTfa9wlv.RADf2MnYmBSTaT7wu.UxsNbBVSK3g6D4nEKb.
+aitor@canarias.local|{SHA512-CRYPT}$6$Cnq8hgmSbH9OI/fJ$0UwA22SYtHWnNZBYHGNMN0uAomeFZq5dzo8EGTjM5sGJhLcPLLNWeJAA0bkmrdPqPcobBdWVs54JFIJZMid1W.
+admin@canarias.local|{SHA512-CRYPT}$6$j/FDaBOZuxdqteK3$Qg2NbHrT2wqtn07nhOIE1MmP8Yml3ZMD/BBUndgXGsnqF4i4l91P0LxL.WUaLffXktuLytSDRQT9arI5p6zEX0
+facturacion@canarias.local|{SHA512-CRYPT}$6$Wel/xdTi1uuBNuyt$UoIaYYjXMZTWhdohRz3kWdc8Z801M4gHwyfCmQPJwiUm0JBnJM0Y1hPQisLg7SY8hukmMYJk5i2LgZbJRtDxT/

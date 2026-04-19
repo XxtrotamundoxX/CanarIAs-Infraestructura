@@ -1,0 +1,40 @@
+<!--
+  @File: infraestructura/gestion/pki.html
+  @Description: Portal de Seguridad - Descarga de Certificados.
+  @Para qué sirve: Esta página web estática permite a los empleados
+    descargar el certificado raíz (CA) de la empresa e instalarlo
+    en su navegador o sistema operativo. Sin este certificado, al
+    acceder a servicios como vault.canarias.local o docker.canarias.local,
+    el navegador mostrará una alerta de "Conexión no segura" porque
+    no reconoce nuestra CA propia como de confianza.
+  @Acceso: https://pki.canarias.local (servido por nginx_empresa)
+  @Cómo instalar el certificado:
+    1. Descargar el archivo canarias_root.pem desde esta página
+    2. En el navegador: Ajustes → Certificados → Importar CA
+    3. Marcar "Confiar para identificar sitios web"
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal de Seguridad - CanarIAs</title>
+    <!-- Estilos inline para mantener la página autocontenida (sin dependencias externas) -->
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f4f4f4; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
+        h1 { color: #2c3e50; }
+        p { color: #7f8c8d; }
+        .btn { background: #3498db; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px; }
+        .btn:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Portal de Seguridad CanarIAs</h1>
+        <p>Para acceder a los servicios de Gestión (Vaultwarden, Portainer) de forma segura,<br>debe instalar nuestro Certificado Raíz en su navegador.</p>
+        <!-- El enlace /certs/ es gestionado por nginx.conf (location /certs/ { alias ... }) -->
+        <a href="/certs/canarias_root.pem" class="btn">📥 Descargar Certificado Raíz (CA)</a>
+        <p style="font-size: 0.8em; margin-top: 20px;">Una vez descargado, instálelo en su sistema o navegador como "Entidad de Certificación de Confianza".</p>
+    </div>
+</body>
+</html>

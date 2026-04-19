@@ -1,0 +1,27 @@
+;
+; BIND data file for canarias.local
+;
+$TTL	604800
+@	IN	SOA	router.canarias.local. root.canarias.local. (
+			      5		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+@	IN	NS	router.canarias.local.
+@	IN	A	10.0.10.1
+
+; REGISTROS TIPO A
+router   IN	A	10.0.10.1
+wp       IN	A	10.0.10.10
+publico  IN	A	10.0.10.10
+gestion  IN	A	10.0.10.20
+backup   IN	A	10.0.10.20
+mail     IN	A	10.0.10.20
+
+; ALIASES
+pki      IN	CNAME	gestion
+vault    IN	CNAME	gestion
+docker   IN	CNAME	gestion
+www      IN	CNAME	publico

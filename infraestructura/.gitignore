@@ -1,0 +1,38 @@
+# Ignorar carpetas ocultas del sistema y de bash necesarias del usuario original
+.bash_history
+.bash_logout
+.profile
+.bashrc
+.cache/
+.local/
+.sudo_as_admin_successful
+.ssh/
+
+# Ignorar la instalación y registros de antigravity (IA)
+.gemini/
+.antigravity-server/
+
+# Ignorar las copias de seguridad de los tar.gz o sql que generan mucho peso
+backups/
+
+# ======= REGLAS DEL PROYECTO INFRAESTRUCTURA =======
+
+# 1. IGNORAR LAS BASES DE DATOS MASIVAS (MARIADB y SQLITE)
+infraestructura/db_data/data/
+# Mantenemos viva la carpeta pero ignoramos su contenido pesado
+!infraestructura/db_data/data/
+infraestructura/db_data/data/*
+!infraestructura/db_data/data/.gitkeep
+
+infraestructura/vault_data/db.sqlite3*
+infraestructura/vault_data/attachments/
+infraestructura/vault_data/sends/
+
+# 2. IGNORAR LOS BUZONES DE CORREO (Solo metadatos y correos de la gente)
+infraestructura/correo/mail-data/canarias.local/*
+
+# 3. CONSERVAR LO SENSIBLE Y NECESARIO (Aprobado explícitamente por el usuario)
+# NOTA: Los directorios de /secrets/ y /certs/ se suben intencionadamente.
+!infraestructura/secrets/
+!infraestructura/certs/
+!infraestructura/wordpress_data/wp-config.php

@@ -1,0 +1,26 @@
+# Carpetas de Herramientas y Claves (SECRETOS)
+.ssh/
+.gemini/
+.vscode-server/
+.antigravity-server/
+.npm/
+.dotnet/
+.cache/
+.local/
+.sudo_as_admin_successful
+
+# Datos de Docker (PESADOS)
+infraestructura/db_data/
+infraestructura/wordpress_data/
+infraestructura/correo/mail-data/
+infraestructura/correo/mail-state/
+infraestructura/correo/mail-logs/
+infraestructura/correo/rainloop-data/
+infraestructura/vault_data/
+infraestructura/kuma_data/
+backups/
+
+# Otros temporales
+*.save
+*.swp
+.DS_Store

@@ -1,0 +1,19 @@
+# @File: infraestructura/correo/mail-config/postfix-virtual.cf
+# @Description: Mapeo de Alias Virtuales y Listas de Distribución.
+# @Logic: Redirige correos enviados a direcciones genéricas hacia los buzones reales de los empleados.
+
+# @Nota_Estructura:
+# Izquierda: Correo genérico (El que recibe el mail desde el exterior).
+# Derecha: Cuentas reales separadas por comas (Los que realmente leen el mail).
+
+# --- LISTA GLOBAL ---
+# @Detalle: Un correo a equipo@... le llega a todos los empleados listados.
+equipo@canarias.local jeremy@canarias.local,adonay@canarias.local,ikram@canarias.local,patricia@canarias.local,aitor@canarias.local
+
+# --- DEPARTAMENTOS ---
+# @Detalle: Las peticiones de información y ventas llegan a Ikram y Patricia.
+info@canarias.local ikram@canarias.local,patricia@canarias.local
+ventas@canarias.local ikram@canarias.local,patricia@canarias.local
+
+# @Detalle: Las incidencias técnicas (soporte) llegan a los administradores (Aitor y Adonay).
+soporte@canarias.local aitor@canarias.local,adonay@canarias.local

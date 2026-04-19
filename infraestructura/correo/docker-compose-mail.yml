@@ -1,0 +1,85 @@
+# =============================================================
+# @File: infraestructura/correo/docker-compose-mail.yml
+# @Description: Servidor de Correo Corporativo Completo.
+# @IP: Escucha en múltiples puertos (25, 143, 465, 587, 993)
+#   directamente en la IP del host Docker.
+#
+# @Para qué sirve: Despliega un servidor de correo electrónico
+#   completo basado en Docker-Mailserver, que incluye:
+#     - Postfix:       Motor de envío de correo (SMTP)
+#     - Dovecot:       Motor de recepción y lectura (IMAP)
+#     - SpamAssassin:  Filtro antispam automático
+#     - Fail2Ban:      Protección contra ataques de fuerza bruta
+#
+# @Cuentas de correo: Se configuran en los archivos de la carpeta
+#   mail-config/ (postfix-accounts.cf y postfix-virtual.cf).
+#   NO se crean desde este archivo.
+#
+# @Certificados: Usa los mismos certificados SSL que el resto de
+#   la infraestructura (carpeta certs/ compartida).
+# =============================================================
+
+version: '3.8'
+
+services:
+
+  # =============================================================
+  # DOCKER-MAILSERVER — Motor de Correo
+  # @Imagen: docker.io/mailserver/docker-mailserver
+  # @Para qué sirve: Es el servidor completo que gestiona el envío
+  #   y recepción de correos para el dominio canarias.local.
+  #   Los empleados se conectan desde Rainloop (webmail) o desde
+  #   un cliente como Thunderbird/Outlook.
+  # =============================================================
+  mailserver:
+    image: docker.io/mailserver/docker-mailserver:latest
+    container_name: servidor_correo
+    hostname: mail.canarias.local       # Nombre del servidor en el protocolo SMTP
+    domainname: canarias.local          # Dominio de correo gestionado
+    ports:
+      # @Puertos de correo: Cada puerto tiene una función específica.
+      # Los clientes de correo (Thunderbird, Outlook) necesitan estos puertos
+      # para conectarse al servidor.
+      - "25:25"     # SMTP — Recepción de correo entre servidores (MTA to MTA)
+                    #   Ejemplo: cuando Gmail envía un correo a admin@canarias.local
+      - "143:143"   # IMAP — Lectura de correo (texto plano, se cifra con STARTTLS)
+                    #   Usado por clientes de correo para descargar mensajes
+      - "465:465"   # ESMTP (SMTPS) — Envío seguro con TLS implícito
+                    #   Versión moderna y segura del puerto 25
+      - "587:587"   # Submission — Envío de correo desde clientes autenticados
+                    #   Los empleados envían sus correos por aquí (con STARTTLS)
+      - "993:993"   # IMAPS — Lectura segura de correo (IMAP + TLS)
+                    #   Versión cifrada del puerto 143 (la más recomendada)
+    volumes:
+      # @Persistencia: Todos los datos del correo se guardan en carpetas
+      # del host para que sobrevivan reinicios y actualizaciones.
+      - ./mail-data/:/var/mail/                   # Buzones de correo (los emails reales)
+      - ./mail-state/:/var/mail-state/            # Estado de los servicios (Fail2Ban, etc.)
+      - ./mail-logs/:/var/log/mail/               # Logs del servidor de correo
+      - ./mail-config/:/tmp/docker-mailserver/    # Configuración: cuentas, aliases, etc.
+      - ../certs/:/tmp/certs/:ro                  # @Seguridad: Certificados SSL compartidos
+                                                  # (solo lectura, usa la CA central)
+    environment:
+      # @Configuración del servidor de correo
+      - ENABLE_SPAMASSASSIN=1  # Activa el filtro antispam automático
+                               # (puntúa cada email y descarta los sospechosos)
+      - ENABLE_FAIL2BAN=1      # @Seguridad: Banea IPs tras 3 intentos fallidos de login
+                               # (protege contra ataques de fuerza bruta)
+      - ENABLE_CLAMAV=0        # Antivirus desactivado para ahorrar RAM en el laboratorio
+                               # (en producción se activaría con =1)
+      - ONE_DIR=1              # Mantiene todo el estado en una sola carpeta (/var/mail-state)
+      - SSL_TYPE=manual        # @Cifrado: Usa nuestros propios certificados (no Let's Encrypt)
+      - SSL_CERT_PATH=/tmp/certs/server.crt   # Ruta al certificado del servidor
+      - SSL_KEY_PATH=/tmp/certs/server.key    # Ruta a la clave privada del servidor
+    restart: always
+    networks:
+      - infraestructura_app_net   # Conectado a la red común para que Rainloop pueda
+                                  # enviar/recibir correos a través de este servidor
+
+# =============================================================
+# RED EXTERNA
+# @Nota: Usa la misma red compartida que el resto de la infraestructura.
+# =============================================================
+networks:
+  infraestructura_app_net:
+    external: true

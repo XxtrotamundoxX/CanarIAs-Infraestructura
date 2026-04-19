@@ -1,0 +1,52 @@
+# =============================================================
+# @File: infraestructura/certs/v3.ext
+# @Description: Extensiones X.509v3 para el certificado SSL del servidor.
+#
+# @Para qué sirve: Cuando generamos un certificado SSL con OpenSSL,
+#   este archivo le dice al certificado qué dominios y qué IPs
+#   debe considerar "válidos". Si un navegador accede a un dominio
+#   que NO está en esta lista, mostrará una alerta de seguridad.
+#
+# @Cómo se usa: Con el comando de OpenSSL para firmar el certificado:
+#   openssl x509 -req -in server.csr -CA canarias_root.pem \
+#     -CAkey canarias_root.key -CAcreateserial \
+#     -out server.crt -days 365 -extfile v3.ext
+#
+# @Importante: Si añades un nuevo servicio con un nuevo subdominio
+#   (ej. grafana.canarias.local), debes:
+#   1. Añadir una nueva línea DNS.X aquí
+#   2. Regenerar server.crt con el comando de arriba
+#   3. Reiniciar los Nginx para que carguen el nuevo certificado
+# =============================================================
+
+# Identifica quién firmó este certificado (la CA raíz)
+authorityKeyIdentifier=keyid,issuer
+
+# Este NO es un certificado de CA, es un certificado de servidor
+basicConstraints=CA:FALSE
+
+# Usos permitidos del certificado (cifrado de comunicaciones web)
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+
+# Los nombres alternativos se definen en la sección [alt_names]
+subjectAltName = @alt_names
+
+# =============================================================
+# LISTA DE DOMINIOS E IPS VÁLIDOS (Subject Alternative Names)
+# @Para qué sirve: El navegador comprueba que el dominio al que
+#   accedes aparezca en esta lista. Si no está, muestra el error
+#   "NET::ERR_CERT_COMMON_NAME_INVALID".
+# =============================================================
+[alt_names]
+DNS.1 = localhost                    # Acceso local desde el propio servidor
+DNS.2 = canarias.local               # Dominio raíz de la empresa
+DNS.3 = empresa.canarias.local       # Alias general de la empresa
+DNS.4 = vault.canarias.local         # Vaultwarden (gestor de contraseñas)
+DNS.5 = mail.canarias.local          # Webmail (Rainloop)
+DNS.6 = docker.canarias.local        # Portainer (gestión de Docker)
+DNS.7 = pki.canarias.local           # Portal de descarga de certificados
+DNS.8 = status.canarias.local        # Uptime Kuma (monitorización)
+DNS.9 = backup.canarias.local        # Reservado para futuro panel de backups
+IP.1 = 127.0.0.1                     # Loopback local
+IP.2 = 10.0.10.10                    # IP pública (WordPress)
+IP.3 = 10.0.10.20                    # IP de gestión (servicios internos)

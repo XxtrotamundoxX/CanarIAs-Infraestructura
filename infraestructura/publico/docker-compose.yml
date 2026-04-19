@@ -1,0 +1,150 @@
+# =============================================================
+# @File: infraestructura/publico/docker-compose.yml
+# @Description: Despliegue de la Zona Pública (DMZ) — WordPress HA.
+# @IP: 10.0.10.10 (puertos 80 y 443)
+#
+# @Para qué sirve: Levanta el sitio web público de la empresa
+#   (WordPress) en modo Alta Disponibilidad con 3 réplicas,
+#   un balanceador de carga Nginx, y una base de datos MariaDB
+#   centralizada. Es lo que los usuarios de Internet ven cuando
+#   acceden a canarias.local.
+#
+# @Arquitectura:
+#   Internet → Router (DNAT) → Nginx (balanceador) → 3x WordPress → MariaDB
+#
+# @Flujo de una petición web:
+#   1. Un usuario escribe canarias.local en su navegador
+#   2. El router redirige los puertos 80/443 a 10.0.10.10 (DNAT)
+#   3. Nginx recibe la petición y la envía a uno de los 3 WordPress
+#      (usando ip_hash para persistencia de sesión)
+#   4. WordPress lee/escribe en MariaDB y devuelve la página
+# =============================================================
+
+version: '3.8'
+
+services:
+
+  # =============================================================
+  # NGINX PÚBLICO — Balanceador de Carga
+  # @Para qué sirve: Es la puerta de entrada al sitio web público.
+  #   Recibe TODO el tráfico de Internet (redirigido por el router
+  #   via DNAT) y lo reparte entre los 3 contenedores de WordPress
+  #   para que la web no se caiga si hay muchas visitas simultáneas.
+  # @Importante: Escucha SOLO en la IP 10.0.10.10, no en todas
+  #   las interfaces. Así no interfiere con el Nginx de gestión.
+  # =============================================================
+  nginx-web:
+    image: nginx:alpine
+    container_name: nginx_publico
+    restart: always
+    ports:
+      - "10.0.10.10:80:80"     # HTTP: redirige a HTTPS automáticamente
+      - "10.0.10.10:443:443"   # HTTPS: tráfico cifrado (el principal)
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro   # Configuración del balanceador (solo lectura)
+      - ../certs:/etc/nginx/certs:ro            # Certificados SSL compartidos del proyecto
+    networks:
+      - app_net
+    depends_on:
+      - wordpress   # Espera a que WordPress esté listo antes de arrancar
+
+  # =============================================================
+  # CLÚSTER DE WORDPRESS — 3 Réplicas (Alta Disponibilidad)
+  # @Para qué sirve: WordPress es el CMS (gestor de contenidos)
+  #   que genera las páginas web de la empresa. Al tener 3 réplicas
+  #   idénticas, si una cae, las otras 2 siguen sirviendo la web.
+  #   Nginx reparte el tráfico entre ellas automáticamente.
+  # @Datos compartidos: Las 3 réplicas comparten la misma carpeta
+  #   de archivos (wordpress_data/) y la misma base de datos (MariaDB).
+  # =============================================================
+  wordpress:
+    image: bitnami/wordpress:latest
+    restart: always
+    healthcheck:
+      # @Monitorización: Antes de darle tráfico, Nginx verifica que
+      # el contenedor responda. Si falla 3 veces, lo marca como "unhealthy".
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s    # Comprueba cada 30 segundos
+      timeout: 10s     # Si tarda más de 10s en responder, es fallo
+      retries: 3       # 3 fallos seguidos = contenedor caído
+    deploy:
+      replicas: 3      # @Alta Disponibilidad: 3 instancias idénticas de WordPress
+    environment:
+      # Conexión a la base de datos MariaDB
+      - WORDPRESS_DATABASE_HOST=mariadb           # Nombre del servicio de BD en este compose
+      - WORDPRESS_DATABASE_PORT_NUMBER=3306        # Puerto estándar de MySQL/MariaDB
+      - WORDPRESS_DATABASE_USER=admin1234          # Usuario de la BD
+      - WORDPRESS_DATABASE_NAME=admin1234          # Nombre de la BD
+      - WORDPRESS_DATABASE_PASSWORD_FILE=/run/secrets/db_pass  # @Seguridad: Lee la contraseña
+                                                               # desde Docker Secrets (no en texto plano)
+      - ALLOW_EMPTY_PASSWORD=yes    # Permitido en desarrollo (desactivar en producción)
+    secrets:
+      - db_pass   # @Seguridad: Monta el secreto para que WordPress pueda leerlo
+    volumes:
+      - ../wordpress_data:/bitnami/wordpress   # @Persistencia: Temas, plugins y subidas
+                                               # de archivos se guardan fuera del contenedor
+    networks:
+      app_net:
+        aliases:
+          - wordpress   # @Alias: Nombre DNS interno que usa Nginx para encontrar
+                        # las réplicas. Docker balancea automáticamente entre las 3.
+    depends_on:
+      mariadb:
+        condition: service_healthy   # No arranca WordPress hasta que MariaDB esté sana
+
+  # =============================================================
+  # MARIADB — Base de Datos Relacional
+  # @Para qué sirve: Almacena TODA la información de WordPress:
+  #   páginas, entradas, usuarios, configuración, plugins, etc.
+  #   Es un fork de MySQL totalmente compatible.
+  # @Backup: Se hace con 'docker exec base_datos mysqldump ...'
+  #   (ver hacer_backup.sh).
+  # =============================================================
+  mariadb:
+    image: bitnami/mariadb:latest
+    container_name: base_datos          # Nombre fijo para identificarlo fácilmente
+    restart: always
+    healthcheck:
+      # @Monitorización: Verifica que la BD responda a conexiones.
+      # WordPress no arrancará hasta que este health check pase.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s    # Comprueba cada 10 segundos (más frecuente porque es crítico)
+      timeout: 5s
+      retries: 5       # 5 reintentos antes de declarar fallo (la BD tarda en arrancar)
+    environment:
+      - MARIADB_DATABASE=admin1234                  # Nombre de la base de datos
+      - MARIADB_USER=admin1234                      # Usuario de la aplicación
+      - MARIADB_PASSWORD_FILE=/run/secrets/db_pass  # @Seguridad: Contraseña vía Docker Secrets
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db_root_pass  # Contraseña del usuario root
+    secrets:
+      - db_pass
+      - db_root_pass
+    volumes:
+      - ../db_data:/bitnami/mariadb   # @Persistencia: Datos binarios de la BD.
+                                      # Si se borra esta carpeta, SE PIERDE TODO.
+    networks:
+      - app_net
+
+# =============================================================
+# DOCKER SECRETS — Gestión Segura de Contraseñas
+# @Para qué sirve: Docker Secrets permite inyectar contraseñas dentro
+#   de los contenedores sin escribirlas en texto plano en el compose.
+#   Los contenedores las leen como archivos en /run/secrets/.
+# @Archivos: Los secretos se leen de archivos .txt en la carpeta
+#   infraestructura/secrets/ del host.
+# =============================================================
+secrets:
+  db_pass:
+    file: ../secrets/db_password.txt        # Contraseña del usuario de la BD
+  db_root_pass:
+    file: ../secrets/db_root_password.txt    # Contraseña del usuario root de la BD
+
+# =============================================================
+# RED EXTERNA COMPARTIDA
+# @Misma red que todos los demás contenedores del proyecto.
+# Se crea manualmente con: docker network create infraestructura_app_net
+# =============================================================
+networks:
+  app_net:
+    name: infraestructura_app_net
+    external: true

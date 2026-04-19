@@ -1,0 +1,147 @@
+# =============================================================
+# @File: infraestructura/gestion/docker-compose.yml
+# @Description: Despliegue de la Zona de Gestión (Privada).
+# @IP: Todos estos servicios son accesibles a través de 10.0.10.20
+#   gracias al proxy inverso Nginx (nginx_empresa).
+# @Logic: Este archivo levanta los servicios internos que SOLO deben
+#   ser accesibles por los administradores desde la red de Oficina
+#   (10.0.20.0/24) o por VPN (Tailscale). Los invitados tienen
+#   bloqueado el acceso mediante reglas de iptables en el router.
+#
+# Servicios incluidos:
+#   1. Vaultwarden    → Gestor de contraseñas (compatible con Bitwarden)
+#   2. Portainer      → Panel gráfico para gestionar contenedores Docker
+#   3. Webmail        → Cliente web de correo (Rainloop)
+#   4. Uptime Kuma    → Monitor de estado de todos los servicios
+#   5. Nginx Admin    → Proxy inverso que gestiona el acceso HTTPS
+# =============================================================
+
+version: '3.8'
+
+services:
+
+  # =============================================================
+  # VAULTWARDEN — Gestor de Contraseñas Corporativo
+  # @Acceso: https://vault.canarias.local
+  # @Para qué sirve: Almacena de forma cifrada las contraseñas de
+  #   los empleados. Es compatible con la app Bitwarden (móvil y PC).
+  #   Los datos se guardan en una base de datos SQLite dentro de
+  #   la carpeta vault_data/.
+  # =============================================================
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: cofre_seguro        # Nombre visible en 'docker ps' y en Portainer
+    restart: unless-stopped             # Se reinicia solo si no fue parado manualmente
+    environment:
+      - SIGNUPS_ALLOWED=true            # Permite que cualquier usuario se registre
+                                        # (desactivar en producción con =false)
+    volumes:
+      - ../vault_data:/data             # @Persistencia: Base de datos SQLite + adjuntos
+                                        # fuera del contenedor para que sobrevivan reinicios
+    networks:
+      - app_net                         # Conectado a la red común de infraestructura
+
+  # =============================================================
+  # PORTAINER — Panel de Control de Docker
+  # @Acceso: https://docker.canarias.local
+  # @Para qué sirve: Interfaz gráfica web que permite ver, reiniciar,
+  #   eliminar y crear contenedores Docker sin usar la terminal.
+  #   Muy útil para monitorizar el estado de todos los servicios y
+  #   ver los logs de cada contenedor en tiempo real.
+  # @Credenciales: Se crean en el primer acceso (primeros 5 minutos).
+  # =============================================================
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer_web
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # @Importante: Monta el socket de Docker
+                                                     # del host para que Portainer pueda
+                                                     # comunicarse con el motor Docker.
+      - ../kuma_data:/data              # Datos de configuración de Portainer
+    networks:
+      - app_net
+
+  # =============================================================
+  # RAINLOOP — Cliente Webmail (Correo Web)
+  # @Acceso: https://mail.canarias.local/mail/
+  # @Para qué sirve: Permite a los empleados leer y enviar correos
+  #   desde el navegador, conectándose al servidor de correo
+  #   (Docker-Mailserver) que corre en el compose de /correo/.
+  # @Admin: Acceder a ?admin para configurar dominios y servidores IMAP.
+  # =============================================================
+  webmail:
+    image: hardware/rainloop:latest
+    container_name: webmail_canarias
+    restart: unless-stopped
+    volumes:
+      - ../correo/rainloop-data:/rainloop/data   # @Persistencia: Configuración del webmail
+                                                  # (cuentas, contactos, ajustes de usuario)
+    networks:
+      - app_net
+
+  # =============================================================
+  # UPTIME KUMA — Monitor de Estado de Servicios
+  # @Acceso: https://status.canarias.local
+  # @Para qué sirve: Panel web que comprueba periódicamente si los
+  #   servicios (WordPress, Vaultwarden, correo) están funcionando.
+  #   Hace "pings" y verificaciones HTTP cada X segundos y muestra
+  #   el resultado en un dashboard visual. Si algo cae, puede enviar
+  #   alertas por correo/Telegram/Discord.
+  # =============================================================
+  monitor_kuma:
+    image: louislam/uptime-kuma:1
+    container_name: monitor_kuma
+    restart: unless-stopped
+    dns:
+      - 10.0.10.1    # @Importante: Usa el DNS del ROUTER (no el de Docker) para poder
+                      # resolver los dominios *.canarias.local y monitorizar los servicios
+                      # por nombre en lugar de por IP.
+      - 8.8.8.8      # DNS de Google como fallback si el router no responde
+    volumes:
+      - ../kuma_data:/app/data   # @Persistencia: Base de datos SQLite con el historial
+                                  # de caídas, configuración de monitores y estadísticas.
+    networks:
+      - app_net
+
+  # =============================================================
+  # NGINX EMPRESA — Proxy Inverso de Gestión
+  # @IP: 10.0.10.20 (puertos 80 y 443)
+  # @Para qué sirve: Es el "punto de entrada" de toda la zona de gestión.
+  #   Recibe las peticiones HTTPS y las redirige al contenedor correcto
+  #   según el dominio o la ruta de la URL. Su configuración detallada
+  #   está en el archivo nginx.conf de esta misma carpeta.
+  # =============================================================
+  nginx-admin:
+    image: nginx:alpine
+    container_name: nginx_empresa
+    restart: unless-stopped
+    ports:
+      - "10.0.10.20:80:80"     # @Red: Escucha SOLO en la IP de gestión, no en todas
+      - "10.0.10.20:443:443"   #   Así el tráfico público (10.0.10.10) no interfiere
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro  # @Config: Monta el archivo de configuración
+                                                # en modo solo lectura (ro = read-only)
+      - ../certs:/etc/nginx/certs:ro           # @Certs: Certificados SSL del proyecto
+      - ./pki.html:/usr/share/nginx/html/pki.html:ro  # @PKI: Página de descarga de certs
+    networks:
+      - app_net
+    depends_on:           # @Orden: Nginx espera a que los demás servicios arranquen primero
+      - vaultwarden       #   para que las rutas de proxy tengan destino.
+      - portainer
+      - webmail
+      - monitor_kuma
+
+# =============================================================
+# RED EXTERNA COMPARTIDA
+# @Para qué sirve: Todos los contenedores del proyecto (públicos,
+#   gestión y correo) comparten esta red Docker tipo bridge.
+#   Se llama 'infraestructura_app_net' y se crea ANTES de levantar
+#   cualquier compose con: docker network create infraestructura_app_net
+#   Sin ella, los contenedores de distintos compose no podrían
+#   comunicarse entre sí.
+# =============================================================
+networks:
+  app_net:
+    external: true                       # No la crea Docker Compose, ya existe
+    name: infraestructura_app_net        # Nombre exacto de la red en Docker
