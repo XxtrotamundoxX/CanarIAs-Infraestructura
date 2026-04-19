@@ -1,4 +1,7 @@
-# [📄 Ver Informe Técnico Final (Local)](./Informe_Final_ASIR_CanarIAs.md) | [📅 Organización del Proyecto](./Organizacion_Proyecto_ASIR.md)
+# [📅 Organización del Proyecto](./Organizacion_Proyecto_ASIR.md)
+
+---
+
 
 ---
 
