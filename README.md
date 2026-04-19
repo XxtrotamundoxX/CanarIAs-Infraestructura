@@ -1,6 +1,6 @@
 # 🏢 Infraestructura CanarIAs - Proyecto Final ASIR
 
-# [📅 Organización del Proyecto](./Organizacion_Proyecto_ASIR.md) | [📄 Informe Técnico Detallado (Solo Local)](./Informe_Final_ASIR_CanarIAs.md)
+# [📅 Organización del Proyecto](./Organizacion_Proyecto_ASIR.md) 
 
 ---
 
