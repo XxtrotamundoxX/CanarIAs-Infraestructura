@@ -30,7 +30,10 @@ Este repositorio contiene la arquitectura completa de servicios web, gestion y c
 │   └── secrets/            # CLAVES DE BASE DE DATOS
 ├── backups/                # COPIAS DE SEGURIDAD (.sql / .tar.gz)
 ├── hacer_backup.sh         # SCRIPT AUTOMATIZADO DE BACKUP
-└── instalar_dependencias.sh # SCRIPT DE INSTALACIÓN EN LIMPIO
+├── instalar_dependencias.sh # SCRIPT DE INSTALACIÓN EN LIMPIO
+├── auto_reparar.sh         # SCRIPT DE REPARACIÓN DEL SERVIDOR
+├── auto_reparar_router.sh  # SCRIPT DE REPARACIÓN DEL ROUTER
+└── Organizacion_Proyecto_ASIR.md # DOCUMENTACIÓN DE APOYO
 ```
 
 El servidor se divide en tres grandes modulos de red, conectados mediante la red puente infraestructura_app_net:
